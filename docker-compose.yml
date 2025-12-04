@@ -1,72 +1,125 @@
 version: "3"
 services:
-  datanode:
+  # SCM debe iniciarse primero y estar inicializado
+  scm:
     image: apache/ozone:2.0.0
-    command: ["ozone", "datanode"]
+    hostname: scm
+    command: ["/bin/bash", "-c", "if [ ! -f /data/metadata/scm/current/VERSION ]; then ozone scm --init; fi && ozone scm"]
     ports:
-      - 9864:9864
+      - 9876:9876
+      - 9860:9860
     environment:
-      ENSURE_DATANODE_DIR: /data/metadata/dn
-      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata/dn
+      ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
+      OZONE-SITE.XML_ozone.scm.names: scm
+      OZONE-SITE.XML_ozone.scm.datanode.id.dir: /data/metadata/scm
+      OZONE-SITE.XML_ozone.scm.block.client.address: scm
+      OZONE-SITE.XML_ozone.scm.client.address: scm
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata/scm
       OZONE-SITE.XML_ozone.om.address: om
-      CORE-SITE.XML_fs.defaultFS: ofs://om/
-      CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+      OZONE-SITE.XML_hdds.datanode.dir: /data/storage
+      HDDS-SITE.XML_hdds.scm.safemode.min.datanode: "1"
+    volumes:
+      - scm-data:/data
     networks:
       - ozone_net
-  
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9876"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # OM depende de SCM y necesita inicialización
   om:
     image: apache/ozone:2.0.0
-    command: ["ozone", "om"]
+    hostname: om
+    command: ["/bin/bash", "-c", "sleep 15 && if [ ! -f /data/metadata/om/current/VERSION ]; then ozone om --init; fi && ozone om"]
     ports:
       - 9874:9874
       - 9862:9862
     environment:
-      ENSURE_OM_DIR: /data/metadata/om
+      OZONE-SITE.XML_ozone.scm.names: scm
+      OZONE-SITE.XML_ozone.scm.client.address: scm
+      OZONE-SITE.XML_ozone.scm.block.client.address: scm
       OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata/om
       OZONE-SITE.XML_ozone.om.address: om
+      OZONE-SITE.XML_ozone.om.http-address: om:9874
       CORE-SITE.XML_fs.defaultFS: ofs://om/
       CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+    volumes:
+      - om-data:/data
+    depends_on:
+      scm:
+        condition: service_healthy
     networks:
       - ozone_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9874"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
 
-  scm:
+  datanode:
     image: apache/ozone:2.0.0
-    command: ["ozone", "scm"]
+    hostname: datanode
+    command: ["ozone", "datanode"]
     ports:
-      - 9876:9876
+      - 9864:9864
     environment:
-      ENSURE_SCM_DIR: /data/metadata/scm
-      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata/scm
+      OZONE-SITE.XML_ozone.scm.names: scm
+      OZONE-SITE.XML_ozone.scm.client.address: scm
+      OZONE-SITE.XML_ozone.scm.block.client.address: scm
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata/dn
       OZONE-SITE.XML_ozone.om.address: om
+      OZONE-SITE.XML_hdds.datanode.dir: /data/storage
       CORE-SITE.XML_fs.defaultFS: ofs://om/
       CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+    volumes:
+      - dn-data:/data
+    depends_on:
+      scm:
+        condition: service_healthy
     networks:
       - ozone_net
 
   s3g:
     image: apache/ozone:2.0.0
+    hostname: s3g
     command: ["ozone", "s3g"]
     ports:
       - 9878:9878
     environment:
+      OZONE-SITE.XML_ozone.scm.names: scm
+      OZONE-SITE.XML_ozone.scm.client.address: scm
       OZONE-SITE.XML_ozone.om.address: om
       CORE-SITE.XML_fs.defaultFS: ofs://om/
       CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+    depends_on:
+      om:
+        condition: service_healthy
     networks:
       - ozone_net
 
   init-ozone:
     image: apache/ozone:2.0.0
     command: >
-      /bin/bash -c "sleep 30; ozone sh volume create /vol1 || true; ozone sh bucket create /vol1/bucket1 || true;"
+      /bin/bash -c "
+        echo 'Esperando a que OM esté listo...';
+        sleep 45;
+        echo 'Creando volumen y bucket...';
+        ozone sh volume create /vol1 || true;
+        ozone sh bucket create /vol1/bucket1 || true;
+        echo 'Inicialización completada';
+      "
     environment:
+      OZONE-SITE.XML_ozone.scm.names: scm
       OZONE-SITE.XML_ozone.om.address: om
       CORE-SITE.XML_fs.defaultFS: ofs://om/
       CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
     depends_on:
-      - om
-      - scm
-      - datanode
+      om:
+        condition: service_healthy
+      datanode:
+        condition: service_started
     networks:
       - ozone_net
 
@@ -108,10 +161,17 @@ services:
       - ./trino/catalog:/etc/trino/catalog
       - ./ozone/ozone-site.xml:/etc/hadoop/conf/ozone-site.xml
     depends_on:
-      - hive-metastore
-      - om
+      hive-metastore:
+        condition: service_started
+      om:
+        condition: service_healthy
     networks:
       - ozone_net
+
+volumes:
+  scm-data:
+  om-data:
+  dn-data:
 
 networks:
   ozone_net:
