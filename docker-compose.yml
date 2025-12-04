@@ -1,0 +1,117 @@
+version: "3"
+services:
+  datanode:
+    image: apache/ozone:2.0.0
+    command: ["ozone", "datanode"]
+    ports:
+      - 9864:9864
+    environment:
+      ENSURE_DATANODE_DIR: /data/metadata/dn
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata/dn
+      OZONE-SITE.XML_ozone.om.address: om
+      CORE-SITE.XML_fs.defaultFS: ofs://om/
+      CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+    networks:
+      - ozone_net
+  
+  om:
+    image: apache/ozone:2.0.0
+    command: ["ozone", "om"]
+    ports:
+      - 9874:9874
+      - 9862:9862
+    environment:
+      ENSURE_OM_DIR: /data/metadata/om
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata/om
+      OZONE-SITE.XML_ozone.om.address: om
+      CORE-SITE.XML_fs.defaultFS: ofs://om/
+      CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+    networks:
+      - ozone_net
+
+  scm:
+    image: apache/ozone:2.0.0
+    command: ["ozone", "scm"]
+    ports:
+      - 9876:9876
+    environment:
+      ENSURE_SCM_DIR: /data/metadata/scm
+      OZONE-SITE.XML_ozone.metadata.dirs: /data/metadata/scm
+      OZONE-SITE.XML_ozone.om.address: om
+      CORE-SITE.XML_fs.defaultFS: ofs://om/
+      CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+    networks:
+      - ozone_net
+
+  s3g:
+    image: apache/ozone:2.0.0
+    command: ["ozone", "s3g"]
+    ports:
+      - 9878:9878
+    environment:
+      OZONE-SITE.XML_ozone.om.address: om
+      CORE-SITE.XML_fs.defaultFS: ofs://om/
+      CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+    networks:
+      - ozone_net
+
+  init-ozone:
+    image: apache/ozone:2.0.0
+    command: >
+      /bin/bash -c "sleep 30; ozone sh volume create /vol1 || true; ozone sh bucket create /vol1/bucket1 || true;"
+    environment:
+      OZONE-SITE.XML_ozone.om.address: om
+      CORE-SITE.XML_fs.defaultFS: ofs://om/
+      CORE-SITE.XML_fs.ofs.impl: org.apache.hadoop.fs.ozone.RootedOzoneFileSystem
+    depends_on:
+      - om
+      - scm
+      - datanode
+    networks:
+      - ozone_net
+
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: hive
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hivepassword
+    ports:
+      - 5432:5432
+    networks:
+      - ozone_net
+
+  hive-metastore:
+    build: ./hive
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: postgres
+    command: /bin/bash -c "/opt/hive/bin/schematool -dbType postgres -initSchema; /opt/hive/bin/hive --service metastore"
+    volumes:
+      - ./hive/hive-site.xml:/opt/hive/conf/hive-site.xml
+    depends_on:
+      - postgres
+      - om
+      - init-ozone
+    networks:
+      - ozone_net
+    ports:
+      - 9083:9083
+
+  trino:
+    build: ./trino
+    ports:
+      - 8080:8080
+    environment:
+      - HADOOP_CONF_DIR=/etc/hadoop/conf
+    volumes:
+      - ./trino/catalog:/etc/trino/catalog
+      - ./ozone/ozone-site.xml:/etc/hadoop/conf/ozone-site.xml
+    depends_on:
+      - hive-metastore
+      - om
+    networks:
+      - ozone_net
+
+networks:
+  ozone_net:
