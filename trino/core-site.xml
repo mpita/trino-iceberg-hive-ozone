@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<configuration>
+    <property>
+        <name>fs.ofs.impl</name>
+        <value>org.apache.hadoop.fs.ozone.RootedOzoneFileSystem</value>
+    </property>
+    <property>
+        <name>fs.AbstractFileSystem.ofs.impl</name>
+        <value>org.apache.hadoop.fs.ozone.RootedOzoneFs</value>
+    </property>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>ofs://om/</value>
+    </property>
+    <property>
+        <name>ozone.om.address</name>
+        <value>om</value>
+    </property>
+    <property>
+        <name>ozone.scm.names</name>
+        <value>scm</value>
+    </property>
+    <property>
+        <name>ozone.scm.client.address</name>
+        <value>scm</value>
+    </property>
+</configuration>

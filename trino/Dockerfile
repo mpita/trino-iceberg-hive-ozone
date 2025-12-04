@@ -1,7 +1,13 @@
-FROM curlimages/curl:8.11.0 AS builder
-RUN curl -L https://repo1.maven.org/maven2/org/apache/ozone/ozone-filesystem-hadoop3/2.0.0/ozone-filesystem-hadoop3-2.0.0.jar -o /tmp/ozone-filesystem-hadoop3.jar
+FROM apache/ozone:2.0.0 AS ozone-source
 
 FROM trinodb/trino:478
 USER root
-COPY --from=builder /tmp/ozone-filesystem-hadoop3.jar /usr/lib/trino/plugin/iceberg/ozone-filesystem-hadoop3.jar
+
+# Copiar TODOS los JARs de Ozone al plugin de Iceberg
+COPY --from=ozone-source /opt/hadoop/share/ozone/lib/*.jar /usr/lib/trino/plugin/iceberg/
+
+# Copiar configuración de Hadoop y catálogo Iceberg
+COPY core-site.xml /etc/trino/core-site.xml
+COPY catalog/iceberg.properties /etc/trino/catalog/iceberg.properties
+
 USER trino

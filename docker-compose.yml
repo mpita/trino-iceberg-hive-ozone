@@ -1,4 +1,3 @@
-version: "3"
 services:
   # SCM debe iniciarse primero y estar inicializado
   scm:
@@ -155,11 +154,6 @@ services:
     build: ./trino
     ports:
       - 8080:8080
-    environment:
-      - HADOOP_CONF_DIR=/etc/hadoop/conf
-    volumes:
-      - ./trino/catalog:/etc/trino/catalog
-      - ./ozone/ozone-site.xml:/etc/hadoop/conf/ozone-site.xml
     depends_on:
       hive-metastore:
         condition: service_started
