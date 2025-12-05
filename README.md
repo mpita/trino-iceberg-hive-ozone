@@ -51,6 +51,8 @@ Es un formato de tabla abierto para grandes conjuntos de datos analíticos.
     docker-compose up -d --build
     ```
 
+    *Nota:* la imagen de Trino compila en el build un JAR de `ozone-filesystem-hadoop3` sombreado con el prefijo de Protobuf que usa Trino (`io.trino.hadoop.$internal`). Esto evita el cuelgue de `CREATE TABLE` descrito en HDDS-12116. El primer build tarda porque descarga dependencias Maven.
+
 3.  **Verificar el estado**:
     Asegúrate de que todos los contenedores estén en estado `running`.
 
