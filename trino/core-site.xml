@@ -24,4 +24,12 @@
         <name>ozone.scm.client.address</name>
         <value>scm</value>
     </property>
+    <property>
+        <name>ozone.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>ozone.replication.type</name>
+        <value>RATIS</value>
+    </property>
 </configuration>
