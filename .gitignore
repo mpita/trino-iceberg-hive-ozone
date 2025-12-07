@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# IDE/editor
+.idea/
+.vscode/
+
+# Local overrides
+.env
+*.local

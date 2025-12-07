@@ -33,6 +33,19 @@ Motor de consultas SQL distribuido de alto rendimiento.
 Es un formato de tabla abierto para grandes conjuntos de datos analíticos.
 *   **Rol**: Formato de tabla. Proporciona características como transacciones ACID, evolución de esquemas y "time travel" sobre los archivos almacenados en Ozone.
 
+### Servicios en `docker-compose.yml`
+
+| Servicio | Rol breve |
+| --- | --- |
+| `scm` | Storage Container Manager: orquesta datanodes y la metadata de contenedores. |
+| `om` | Ozone Manager: guarda metadata de volúmenes, buckets y claves; expone `ofs://`. |
+| `datanode` | Nodo de datos que almacena los bloques/objetos físicos. |
+| `s3g` | Gateway S3 para acceder a Ozone vía API S3. |
+| `init-ozone` | Job efímero que crea `/vol1` y `/vol1/bucket1` al arranque. |
+| `postgres` | Base para Hive Metastore (metadata de tablas). |
+| `hive-metastore` | Servicio Hive Metastore 4.0 que publica `thrift://hive-metastore:9083`. |
+| `trino` | Coordinador Trino 478 con conector Iceberg y cliente OFS sombreado. |
+
 ---
 
 ## Requisitos Previos
@@ -104,6 +117,25 @@ INSERT INTO iceberg.demo_schema.usuarios VALUES
 -- 4. Consultar datos
 SELECT * FROM iceberg.demo_schema.usuarios;
 ```
+
+## Carga de datos de prueba (`load_fake_data.py`)
+
+Script Python que genera datos sintéticos con Faker y los inserta en tablas Iceberg usando el conector de Trino.
+
+* Qué hace:
+    * Crea (si no existen) y trunca las tablas `customers`, `products` y `sales` en el catálogo `iceberg`, esquema `default`.
+    * Inserta ~20k clientes, ~5k productos y ~50k ventas en lotes de 1000 filas.
+* Requisitos previos: entorno levantado (`docker-compose up -d`), Python 3.9+ con dependencias `faker` y `trino` instaladas (por ejemplo `pip install faker trino` o `uv pip install faker trino`).
+* Uso típico:
+
+    ```bash
+    # en la raíz del repo
+    python load_fake_data.py
+    # o con uv
+    uv run python load_fake_data.py
+    ```
+
+El script se conecta a `localhost:8080` (Trino), usuario `python-loader`, catálogo `iceberg`, esquema `default`. Ajusta los contadores o el `BATCH_SIZE` dentro del archivo si necesitas más/menos datos.
 
 ### Verificar en Ozone
 
