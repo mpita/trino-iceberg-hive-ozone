@@ -26,6 +26,10 @@ NUM_PRODUCTS = 5000
 NUM_SALES = 50000
 BATCH_SIZE = 1000
 
+# Listas para almacenar los IDs generados
+customer_ids = []
+product_ids = []
+
 
 def create_tables():
     cursor.execute("""
@@ -99,12 +103,15 @@ def truncate_tables():
 
 def insert_customers():
     print("Insertando customers...")
+    global customer_ids
+    customer_ids = []
 
     for batch_start in range(0, NUM_CUSTOMERS, BATCH_SIZE):
         batch = []
 
         for _ in range(BATCH_SIZE):
             cid = random.randint(1, 10_000_000)
+            customer_ids.append(cid)  # Guardar el ID generado
 
             birthdate = fake.date_of_birth(minimum_age=18, maximum_age=80).isoformat()
             signup_date = fake.date_between(
@@ -182,12 +189,15 @@ def insert_customers():
 
 def insert_products():
     print("Insertando products...")
+    global product_ids
+    product_ids = []
 
     for batch_start in range(0, NUM_PRODUCTS, BATCH_SIZE):
         batch = []
 
         for _ in range(BATCH_SIZE):
             pid = random.randint(1, 1_000_000)
+            product_ids.append(pid)  # Guardar el ID generado
             batch.append(
                 (
                     pid,
@@ -230,13 +240,16 @@ def insert_products():
 def insert_sales():
     print("Insertando sales...")
 
+    if not customer_ids or not product_ids:
+        raise ValueError("Debe insertar customers y products antes de sales")
+
     for batch_start in range(0, NUM_SALES, BATCH_SIZE):
         batch = []
 
         for _ in range(BATCH_SIZE):
             sid = random.randint(1, 1_000_000_000)
-            cid = random.randint(1, 10_000_000)
-            pid = random.randint(1, 1_000_000)
+            cid = random.choice(customer_ids)  # Seleccionar un customer_id existente
+            pid = random.choice(product_ids)   # Seleccionar un product_id existente
 
             quantity = random.randint(1, 10)
             unit_price = round(random.uniform(5.0, 1000.0), 2)

@@ -144,29 +144,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ozone"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "faker" },
-    { name = "trino" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "faker", specifier = ">=38.2.0" },
-    { name = "trino", specifier = ">=0.336.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.8" }]
-
-[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 source = { registry = "https://pypi.org/simple" }
@@ -254,6 +231,29 @@ sdist = { url = "https://files.pythonhosted.org/packages/63/bc/1559f7eaf8501e520
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4a/5b/ce0c2740cb73d11e0fe47aff292599db0edfa8c86bbb274cc72b31a5b76c/trino-0.336.0-py3-none-any.whl", hash = "sha256:e82339e9fffe5c6c51de3bfdf28f083e3ae5945a4502739ab2094a0d08d68070", size = 57983, upload-time = "2025-08-14T11:09:15.359Z" },
 ]
+
+[[package]]
+name = "trino-iceberg-hive-ozone"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "faker" },
+    { name = "trino" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "faker", specifier = ">=38.2.0" },
+    { name = "trino", specifier = ">=0.336.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ruff", specifier = ">=0.14.8" }]
 
 [[package]]
 name = "tzdata"
